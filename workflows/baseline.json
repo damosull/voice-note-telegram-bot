@@ -1,0 +1,522 @@
+{
+  "name": "echo (note taker)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {
+          "download": false,
+          "userIds": ""
+        }
+      },
+      "id": "20ba973a-5b69-4c28-9091-4708c66a2603",
+      "name": "Telegram Message Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        -112
+      ],
+      "webhookId": "telegram-webhook-phase4",
+      "credentials": {
+        "telegramApi": {
+          "id": "tHXjTtBHAMeDXLIQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "voice-condition",
+              "leftValue": "={{ $json.message.voice }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        16
+      ],
+      "id": "50c7fbde-291f-4249-9176-85b631477d0e",
+      "name": "Check if Voice"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        -112
+      ],
+      "id": "37d609d0-fcec-40a3-9fda-f6bfd8edba47",
+      "name": "Get Voice File",
+      "webhookId": "telegram-file-phase4",
+      "credentials": {
+        "telegramApi": {
+          "id": "tHXjTtBHAMeDXLIQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        464,
+        -80
+      ],
+      "id": "ec527ce9-23b4-441f-9e83-b1a8053d5b5b",
+      "name": "Transcribe Voice",
+      "credentials": {
+        "openAiApi": {
+          "id": "TaErODEqzXpfNT1w",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text-assignment",
+              "name": "text",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        112
+      ],
+      "id": "2164586c-3316-4f67-aa39-f89b99174bba",
+      "name": "Set Text Field"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "d7e4b129-470f-4007-9807-158c38a12c01",
+      "name": "Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        240
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "TaErODEqzXpfNT1w",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text || $json.message.text }}",
+        "options": {
+          "systemMessage": "You are a voice notes formatter. Extract key information and return a formatted response for Telegram.\n\n## Instructions\n1. Analyze the transcript\n2. Extract summary bullets\n3. Identify action items with owners and due dates\n4. Generate relevant tags\n5. Note any decisions made\n\n## Response Format\nReturn a formatted message like this:\n\n📝 **Voice Note Processed**\n\n**Summary:**\n• [bullet point 1]\n• [bullet point 2]\n\n**Actions:**\n• ([Owner]) [Task description] [due date if mentioned]\n\n**Tags:** [tag1, tag2]\n\n✅ Processed successfully\n\nIf no meaningful content, just return: \"📝 Voice note received and processed.\""
+        }
+      },
+      "id": "661499f8-6ebe-48fb-8e68-9b1d0b3771cc",
+      "name": "Assistant Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        848,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "storage-data",
+              "name": "storage_data",
+              "value": "={{ {\n  timestamp: $now.format('yyyy-MM-dd HH:mm:ss'),\n  sender: $('Telegram Message Trigger').first().json.message.from.first_name,\n  source: $('Telegram Message Trigger').first().json.message.voice ? 'voice' : 'text',\n  transcript: $('Transcribe Voice').first().json.text || $('Set Text Field').first().json.text || 'N/A',\n  formatted_output: $json.output,\n  chat_id: $('Telegram Message Trigger').first().json.message.chat.id,\n  voice_duration: $('Telegram Message Trigger').first().json.message.voice?.duration || null\n} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        64
+      ],
+      "id": "db9433c2-cb0b-459b-9c7c-3db2c34711d7",
+      "name": "Prepare Storage Data"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1qT4ZzOeDf6sdcvaAR3Pth3XCp0yAyamx-2MwfbhiTLo",
+          "mode": "list",
+          "cachedResultName": "VoiceNotes",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qT4ZzOeDf6sdcvaAR3Pth3XCp0yAyamx-2MwfbhiTLo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qT4ZzOeDf6sdcvaAR3Pth3XCp0yAyamx-2MwfbhiTLo/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.storage_data.timestamp }}",
+            "source": "={{ $json.storage_data.source }}",
+            "summary_bullets": "={{ $json.storage_data.formatted_output }}",
+            "tags": "={{ $json.storage_data.formatted_output }}",
+            "debug_json": "={{ JSON.stringify($json.storage_data) }}",
+            "chat_id": "={{ $json.storage_data.chat_id }}",
+            "sender": "={{ $json.storage_data.sender }}",
+            "transcript": "={{ $json.storage_data.transcript }}",
+            "actions_json": "={{ $json.storage_data.formatted_output }}",
+            "decisions": "={{ $json.storage_data.formatted_output }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sender",
+              "displayName": "sender",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "transcript",
+              "displayName": "transcript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary_bullets",
+              "displayName": "summary_bullets",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "actions_json",
+              "displayName": "actions_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tags",
+              "displayName": "tags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decisions",
+              "displayName": "decisions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "debug_json",
+              "displayName": "debug_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1424,
+        48
+      ],
+      "id": "7d4b5e65-207c-43ff-8b25-6a662840a51f",
+      "name": "Store in Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "b7Xh5PXewmp9mLDy",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "1WsuNsWz5Tu6I7htmS987ogXvsv13G5965IRo82Lx0WA",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "={{ $json.storage_data.formatted_output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        240
+      ],
+      "id": "76a34e6d-360c-42ab-a7bc-a57863e3b354",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "0ivdCneuW3nlzRjn",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Message Trigger').first().json.message.chat.id }}",
+        "text": "={{ $('Assistant Agent').first().json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1760,
+        48
+      ],
+      "id": "f659ffec-9dc3-4ca2-aa2b-43deca614f75",
+      "name": "Reply in Telegram",
+      "webhookId": "telegram-reply-phase4",
+      "credentials": {
+        "telegramApi": {
+          "id": "tHXjTtBHAMeDXLIQ",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Message Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check if Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Voice": {
+      "main": [
+        [
+          {
+            "node": "Get Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Text Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice File": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Voice": {
+      "main": [
+        [
+          {
+            "node": "Assistant Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Text Field": {
+      "main": [
+        [
+          {
+            "node": "Assistant Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Assistant Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assistant Agent": {
+      "main": [
+        [
+          {
+            "node": "Prepare Storage Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Storage Data": {
+      "main": [
+        [
+          {
+            "node": "Store in Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in Sheets": {
+      "main": [
+        [
+          {
+            "node": "Reply in Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f4e1c0ab-bc28-4bae-9dc8-e712a6c53dd7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8e1b3412574777ddead9924e413ace8ce1a29e9bb466f00d4df5ac1942aaecc9"
+  },
+  "id": "OVnuaKOFPhJrrs0P",
+  "tags": []
+}
