@@ -1,5 +1,5 @@
 {
-  "name": "echo (note taker)",
+  "name": "My workflow 3",
   "nodes": [
     {
       "parameters": {
@@ -11,15 +11,15 @@
           "userIds": ""
         }
       },
-      "id": "20ba973a-5b69-4c28-9091-4708c66a2603",
+      "id": "46d8ce8f-c553-452e-b6e7-aaa8606f0bd4",
       "name": "Telegram Message Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.2,
       "position": [
-        -128,
-        -112
+        -1424,
+        272
       ],
-      "webhookId": "telegram-webhook-phase4",
+      "webhookId": "1b0bf55e-6635-4ce4-9bac-932f5889dbdc",
       "credentials": {
         "telegramApi": {
           "id": "tHXjTtBHAMeDXLIQ",
@@ -38,7 +38,7 @@
           },
           "conditions": [
             {
-              "id": "voice-condition",
+              "id": "audio-check",
               "leftValue": "={{ $json.message.voice }}",
               "rightValue": "",
               "operator": {
@@ -52,14 +52,14 @@
         },
         "options": {}
       },
+      "id": "914f223f-8e18-4af3-8e19-580509897798",
+      "name": "Check if Audio file",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        64,
-        16
-      ],
-      "id": "50c7fbde-291f-4249-9176-85b631477d0e",
-      "name": "Check if Voice"
+        -1200,
+        272
+      ]
     },
     {
       "parameters": {
@@ -67,15 +67,15 @@
         "fileId": "={{ $json.message.voice.file_id }}",
         "additionalFields": {}
       },
+      "id": "c5290ae3-e8a7-4c29-a7a3-abab66ccacfd",
+      "name": "Get a file",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        272,
-        -112
+        -976,
+        176
       ],
-      "id": "37d609d0-fcec-40a3-9fda-f6bfd8edba47",
-      "name": "Get Voice File",
-      "webhookId": "telegram-file-phase4",
+      "webhookId": "8a8d13e4-df0e-410f-8d30-9671886e6e6a",
       "credentials": {
         "telegramApi": {
           "id": "tHXjTtBHAMeDXLIQ",
@@ -89,14 +89,14 @@
         "operation": "transcribe",
         "options": {}
       },
+      "id": "a0cb10b7-8a45-4765-8cd1-b305fdc21899",
+      "name": "Transcribe audio",
       "type": "@n8n/n8n-nodes-langchain.openAi",
       "typeVersion": 1.8,
       "position": [
-        464,
-        -80
+        -752,
+        176
       ],
-      "id": "ec527ce9-23b4-441f-9e83-b1a8053d5b5b",
-      "name": "Transcribe Voice",
       "credentials": {
         "openAiApi": {
           "id": "TaErODEqzXpfNT1w",
@@ -109,7 +109,7 @@
         "assignments": {
           "assignments": [
             {
-              "id": "text-assignment",
+              "id": "text-field",
               "name": "text",
               "value": "={{ $json.message.text }}",
               "type": "string"
@@ -118,32 +118,47 @@
         },
         "options": {}
       },
+      "id": "91aa01ee-089b-432a-b962-1f5275604800",
+      "name": "Set text field",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        272,
-        112
-      ],
-      "id": "2164586c-3316-4f67-aa39-f89b99174bba",
-      "name": "Set Text Field"
+        -752,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Message Trigger').first().json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "id": "c011748c-8d2b-4dbf-9abf-bfcec1e1c631",
+      "name": "Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -392,
+        496
+      ]
     },
     {
       "parameters": {
         "model": {
           "__rl": true,
-          "value": "gpt-4o-mini",
+          "value": "gpt-4",
           "mode": "list",
-          "cachedResultName": "gpt-4o-mini"
+          "cachedResultName": "gpt-4"
         },
         "options": {}
       },
-      "id": "d7e4b129-470f-4007-9807-158c38a12c01",
+      "id": "337600b5-228f-4143-bc09-add62b524a99",
       "name": "Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
       "position": [
-        864,
-        240
+        -528,
+        496
       ],
       "credentials": {
         "openAiApi": {
@@ -157,40 +172,30 @@
         "promptType": "define",
         "text": "={{ $json.text || $json.message.text }}",
         "options": {
-          "systemMessage": "You are a voice notes formatter. Extract key information and return a formatted response for Telegram.\n\n## Instructions\n1. Analyze the transcript\n2. Extract summary bullets\n3. Identify action items with owners and due dates\n4. Generate relevant tags\n5. Note any decisions made\n\n## Response Format\nReturn a formatted message like this:\n\n📝 **Voice Note Processed**\n\n**Summary:**\n• [bullet point 1]\n• [bullet point 2]\n\n**Actions:**\n• ([Owner]) [Task description] [due date if mentioned]\n\n**Tags:** [tag1, tag2]\n\n✅ Processed successfully\n\nIf no meaningful content, just return: \"📝 Voice note received and processed.\""
+          "systemMessage": "You are a professional note-taking assistant that extracts structured data from voice notes and text messages. Your job is to process notes and extract specific information in a structured format.\n\n## Your Task\nProcess the input note and extract the following structured data:\n- **raw_transcript**: The exact text from the note\n- **actions_json**: Array of actionable items mentioned in the note\n- **decisions**: Array of decisions made or mentioned in the note\n- **summary**: A brief, clear summary of the note\n- **formatted_doc_text**: Formatted text suitable for Google Docs with proper structure\n\n## Output Format\nReturn ONLY a valid JSON object with these exact keys:\n```json\n{\n  \"raw_transcript\": \"exact text from note\",\n  \"actions_json\": [\"action 1\", \"action 2\"],\n  \"decisions\": [\"decision 1\", \"decision 2\"],\n  \"summary\": \"brief summary\",\n  \"formatted_doc_text\": \"formatted text for docs\"\n}\n```\n\n## Guidelines\n- Be accurate and concise\n- Extract only clear actions and decisions\n- Format the doc text with proper headings and structure\n- If no actions or decisions are found, use empty arrays\n- Always return valid JSON\n\n## Available Tools\n- **Google Sheets Tool**: Save structured data to spreadsheet\n- **Google Docs Tool**: Append formatted text to document\n\nUse these tools to save the processed data after extraction."
         }
       },
-      "id": "661499f8-6ebe-48fb-8e68-9b1d0b3771cc",
-      "name": "Assistant Agent",
+      "id": "46c97520-805e-4a37-99b8-9877f91ce490",
+      "name": "Note Processing Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        848,
-        48
+        -528,
+        272
       ]
     },
     {
       "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "storage-data",
-              "name": "storage_data",
-              "value": "={{ {\n  timestamp: $now.format('yyyy-MM-dd HH:mm:ss'),\n  sender: $('Telegram Message Trigger').first().json.message.from.first_name,\n  source: $('Telegram Message Trigger').first().json.message.voice ? 'voice' : 'text',\n  transcript: $('Transcribe Voice').first().json.text || $('Set Text Field').first().json.text || 'N/A',\n  formatted_output: $json.output,\n  chat_id: $('Telegram Message Trigger').first().json.message.chat.id,\n  voice_duration: $('Telegram Message Trigger').first().json.message.voice?.duration || null\n} }}",
-              "type": "object"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "// Extract JSON from markdown code block\nconst output = $input.first().json.output;\n\n// Remove markdown code block markers\nconst jsonString = output.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n// Parse the JSON\nlet parsedData;\ntry {\n  parsedData = JSON.parse(jsonString);\n} catch (error) {\n  // If parsing fails, return error data\n  parsedData = {\n    raw_transcript: output,\n    actions_json: [],\n    decisions: [],\n    summary: \"Error parsing JSON response\",\n    formatted_doc_text: output\n  };\n}\n\n// Return the parsed data\nreturn [{\n  json: parsedData\n}];"
       },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
+      "id": "059eaf70-5fd3-4247-ba0c-ce73c2d0e846",
+      "name": "Parse JSON Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        1152,
-        64
-      ],
-      "id": "db9433c2-cb0b-459b-9c7c-3db2c34711d7",
-      "name": "Prepare Storage Data"
+        -176,
+        272
+      ]
     },
     {
       "parameters": {
@@ -198,32 +203,28 @@
         "documentId": {
           "__rl": true,
           "value": "1qT4ZzOeDf6sdcvaAR3Pth3XCp0yAyamx-2MwfbhiTLo",
-          "mode": "list",
-          "cachedResultName": "VoiceNotes",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qT4ZzOeDf6sdcvaAR3Pth3XCp0yAyamx-2MwfbhiTLo/edit?usp=drivesdk"
+          "mode": "id"
         },
         "sheetName": {
           "__rl": true,
-          "value": "gid=0",
-          "mode": "list",
-          "cachedResultName": "Sheet1",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qT4ZzOeDf6sdcvaAR3Pth3XCp0yAyamx-2MwfbhiTLo/edit#gid=0"
+          "value": "Sheet1",
+          "mode": "name"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
-            "timestamp": "={{ $json.storage_data.timestamp }}",
-            "source": "={{ $json.storage_data.source }}",
-            "summary_bullets": "={{ $json.storage_data.formatted_output }}",
-            "tags": "={{ $json.storage_data.formatted_output }}",
-            "debug_json": "={{ JSON.stringify($json.storage_data) }}",
-            "chat_id": "={{ $json.storage_data.chat_id }}",
-            "sender": "={{ $json.storage_data.sender }}",
-            "transcript": "={{ $json.storage_data.transcript }}",
-            "actions_json": "={{ $json.storage_data.formatted_output }}",
-            "decisions": "={{ $json.storage_data.formatted_output }}"
+            "timestamp": "={{ $now.format('yyyy-MM-dd\\'T\\'HH:mm:ss.SSS\\'Z\\'') }}",
+            "sender_name": "={{ $('Telegram Message Trigger').first().json.message.from.first_name }}",
+            "chat_id": "={{ $('Telegram Message Trigger').first().json.message.chat.id }}",
+            "note_type": "={{ $('Telegram Message Trigger').first().json.message.voice ? 'voice' : 'text' }}",
+            "raw_transcript": "={{ $json.raw_transcript }}",
+            "summary": "={{ $json.summary }}",
+            "actions_json": "={{ $json.actions_json }}",
+            "decisions": "={{ $json.decisions }}",
+            "formatted_message": "={{ $json.formatted_doc_text }}",
+            "status": "success",
+            "error_message": ""
           },
-          "matchingColumns": [],
           "schema": [
             {
               "id": "timestamp",
@@ -235,62 +236,8 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "sender",
-              "displayName": "sender",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "source",
-              "displayName": "source",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "transcript",
-              "displayName": "transcript",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "summary_bullets",
-              "displayName": "summary_bullets",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "actions_json",
-              "displayName": "actions_json",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "tags",
-              "displayName": "tags",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true
-            },
-            {
-              "id": "decisions",
-              "displayName": "decisions",
+              "id": "sender_name",
+              "displayName": "sender_name",
               "required": false,
               "defaultMatch": false,
               "display": true,
@@ -307,30 +254,91 @@
               "canBeUsedToMatch": true
             },
             {
-              "id": "debug_json",
-              "displayName": "debug_json",
+              "id": "note_type",
+              "displayName": "note_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "raw_transcript",
+              "displayName": "raw_transcript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "actions_json",
+              "displayName": "actions_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "decisions",
+              "displayName": "decisions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "formatted_message",
+              "displayName": "formatted_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
               "required": false,
               "defaultMatch": false,
               "display": true,
               "type": "string",
               "canBeUsedToMatch": true
             }
-          ],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
+          ]
         },
         "options": {
           "useAppend": true
         }
       },
+      "id": "f3ce9865-b1d0-403f-96fd-e362690e7644",
+      "name": "Append to Google Sheets",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.4,
+      "typeVersion": 4.7,
       "position": [
-        1424,
-        48
+        48,
+        176
       ],
-      "id": "7d4b5e65-207c-43ff-8b25-6a662840a51f",
-      "name": "Store in Sheets",
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "b7Xh5PXewmp9mLDy",
@@ -346,19 +354,19 @@
           "actionFields": [
             {
               "action": "insert",
-              "text": "={{ $json.storage_data.formatted_output }}"
+              "text": "==== {{ $now.format('yyyy-MM-dd HH:mm') }} - {{ $('Telegram Message Trigger').first().json.message.from.first_name }} ===\n\n{{ $json.formatted_doc_text }}\n\n---\n\n"
             }
           ]
         }
       },
+      "id": "6f6b0fb7-0be1-4f16-be8f-71463802332a",
+      "name": "Append to Google Docs",
       "type": "n8n-nodes-base.googleDocs",
       "typeVersion": 2,
       "position": [
-        1424,
-        240
+        48,
+        368
       ],
-      "id": "76a34e6d-360c-42ab-a7bc-a57863e3b354",
-      "name": "Update a document",
       "credentials": {
         "googleDocsOAuth2Api": {
           "id": "0ivdCneuW3nlzRjn",
@@ -369,24 +377,39 @@
     {
       "parameters": {
         "chatId": "={{ $('Telegram Message Trigger').first().json.message.chat.id }}",
-        "text": "={{ $('Assistant Agent').first().json.output }}",
-        "additionalFields": {}
+        "text": "=Note processed successfully!|Summary: {{ $json.summary }}Actions: {{ $json.actions_json.length }} itemsDecisions: {{ $json.decisions.length }} itemsData saved to Google Sheets and Docs!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
       },
+      "id": "9c5686cd-8fba-4850-8bb7-a5a0c7cefef2",
+      "name": "Success Reply",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1760,
-        48
+        480,
+        272
       ],
-      "id": "f659ffec-9dc3-4ca2-aa2b-43deca614f75",
-      "name": "Reply in Telegram",
-      "webhookId": "telegram-reply-phase4",
+      "webhookId": "901a5714-d9d7-4758-99f6-7cff224bc1e2",
       "credentials": {
         "telegramApi": {
           "id": "tHXjTtBHAMeDXLIQ",
           "name": "Telegram account"
         }
       }
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        272,
+        272
+      ],
+      "id": "10008e44-1e33-408f-b357-cfbfe8f96482",
+      "name": "Merge"
     }
   ],
   "pinData": {},
@@ -395,59 +418,70 @@
       "main": [
         [
           {
-            "node": "Check if Voice",
+            "node": "Check if Audio file",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check if Voice": {
+    "Check if Audio file": {
       "main": [
         [
           {
-            "node": "Get Voice File",
+            "node": "Get a file",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Set Text Field",
+            "node": "Set text field",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Get Voice File": {
+    "Get a file": {
       "main": [
         [
           {
-            "node": "Transcribe Voice",
+            "node": "Transcribe audio",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Transcribe Voice": {
+    "Transcribe audio": {
       "main": [
         [
           {
-            "node": "Assistant Agent",
+            "node": "Note Processing Agent",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Set Text Field": {
+    "Set text field": {
       "main": [
         [
           {
-            "node": "Assistant Agent",
+            "node": "Note Processing Agent",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Note Processing Agent",
+            "type": "ai_memory",
             "index": 0
           }
         ]
@@ -457,54 +491,71 @@
       "ai_languageModel": [
         [
           {
-            "node": "Assistant Agent",
+            "node": "Note Processing Agent",
             "type": "ai_languageModel",
             "index": 0
           }
         ]
       ]
     },
-    "Assistant Agent": {
+    "Note Processing Agent": {
       "main": [
         [
           {
-            "node": "Prepare Storage Data",
+            "node": "Parse JSON Response",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare Storage Data": {
+    "Parse JSON Response": {
       "main": [
         [
           {
-            "node": "Store in Sheets",
+            "node": "Append to Google Sheets",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Update a document",
+            "node": "Append to Google Docs",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Store in Sheets": {
+    "Append to Google Sheets": {
       "main": [
         [
           {
-            "node": "Reply in Telegram",
+            "node": "Merge",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Update a document": {
+    "Append to Google Docs": {
       "main": [
-        []
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Success Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -512,11 +563,10 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "f4e1c0ab-bc28-4bae-9dc8-e712a6c53dd7",
+  "versionId": "f2aeb842-b404-4030-93a5-94b1a4620365",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "8e1b3412574777ddead9924e413ace8ce1a29e9bb466f00d4df5ac1942aaecc9"
   },
-  "id": "OVnuaKOFPhJrrs0P",
+  "id": "eFSfC5ij5IFd721d",
   "tags": []
 }
